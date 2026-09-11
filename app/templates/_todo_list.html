@@ -1,0 +1,64 @@
+<section
+  id="todo-list"
+  class="overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-sm"
+>
+  <div
+    class="flex items-center justify-between border-b border-base-300 px-4 py-3"
+  >
+    <h2
+      class="text-sm font-bold uppercase tracking-[0.16em] text-base-content/60"
+    >
+      List
+    </h2>
+    <span class="text-sm text-base-content/60"
+      >{{ todos | selectattr("completed", "equalto", false) | list | length }}
+      remaining</span
+    >
+  </div>
+
+  {% if todos %}
+  <ul class="divide-y divide-base-300">
+    {% for todo in todos %}
+    <li
+      class="flex items-center gap-3 px-4 py-3"
+      x-cloak
+      x-show="
+            filter === 'all' || 
+            (filter === 'active' && !{{ 'true' if todo.completed else 'false' }}) || 
+            (filter === 'completed' && {{ 'true' if todo.completed else 'false' }})
+            "
+    >
+      <button
+        type="button"
+        class="btn btn-circle btn-sm {{ 'btn-primary' if todo.completed else 'btn-outline text-transparent hover:text-primary' }}"
+        hx-patch="/todos/{{ todo.id }}/toggle"
+        hx-target="#todo-list"
+        hx-swap="outerHTML"
+        aria-label="完了状態を切り替え"
+      >
+        ✓
+      </button>
+
+      <span
+        class="min-w-0 flex-1 break-words text-base {{ 'text-base-content/40 line-through' if todo.completed else 'text-base-content' }}"
+      >
+        {{ todo.title }}
+      </span>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm text-error"
+        hx-delete="/todos/{{ todo.id }}"
+        hx-target="#todo-list"
+        hx-swap="outerHTML"
+        aria-label="削除"
+      >
+        削除
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="px-4 py-8 text-center text-base-content/60">Todo はありません。</p>
+  {% endif %}
+</section>
