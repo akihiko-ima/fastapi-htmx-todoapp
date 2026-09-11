@@ -9,3 +9,6 @@ __pycache__/
 
 # database
 *.db
+
+# Docker data
+data/

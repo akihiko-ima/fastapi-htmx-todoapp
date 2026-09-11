@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from os import getenv
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
@@ -6,7 +7,8 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Field, Session, SQLModel, col, create_engine, select
 
 templates = Jinja2Templates(directory="app/templates")
-engine = create_engine("sqlite:///todos.db", connect_args={"check_same_thread": False})
+database_url = getenv("TODO_DATABASE_URL", "sqlite:///todos.db")
+engine = create_engine(database_url, connect_args={"check_same_thread": False})
 
 
 class Todo(SQLModel, table=True):

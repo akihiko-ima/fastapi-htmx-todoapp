@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "60000:60000"
+    environment:
+      TODO_DATABASE_URL: sqlite:////data/todos.db
+    volumes:
+      - todo-data:/data
+
+volumes:
+  todo-data:

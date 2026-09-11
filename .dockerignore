@@ -1,0 +1,12 @@
+# ignore
+
+.git
+.venv
+__pycache__
+*.py[cod]
+.ruff_cache
+.pytest_cache
+.mypy_cache
+*.db
+docs
+README.md

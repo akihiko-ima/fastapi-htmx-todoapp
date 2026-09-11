@@ -30,3 +30,11 @@ uv sync
 ```bash
 uv run fastapi dev --host 0.0.0.0
 ```
+
+## Docker での起動
+
+```bash
+docker compose up --build
+```
+
+ブラウザで <http://localhost:60000> を開いてください。Todo データは `todo-data` ボリュームに保存されます。
