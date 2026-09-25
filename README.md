@@ -9,15 +9,15 @@
 
 ## 技術スタック
 
-| 技術 | 用途 |
-| --- | --- |
-| FastAPI | Web フレームワーク |
-| SQLModel + SQLite | ORM によるデータモデル定義とデータ永続化 |
-| HTMX | サーバーが返す HTML 断片による非同期 UI 更新 |
-| Jinja2 | HTML テンプレートエンジン |
-| Alpine.js | 軽量な UI インタラクション（トグル・モーダル等）の付与 |
-| Tailwind CSS | ユーティリティベースのスタイリング |
-| daisyUI | Tailwind 上に構築された UI コンポーネント・テーマ |
+| 技術              | 用途                                                   |
+| ----------------- | ------------------------------------------------------ |
+| FastAPI           | Web フレームワーク                                     |
+| SQLModel + SQLite | ORM によるデータモデル定義とデータ永続化               |
+| HTMX              | サーバーが返す HTML 断片による非同期 UI 更新           |
+| Jinja2            | HTML テンプレートエンジン                              |
+| Alpine.js         | 軽量な UI インタラクション（トグル・モーダル等）の付与 |
+| Tailwind CSS      | ユーティリティベースのスタイリング                     |
+| daisyUI           | Tailwind 上に構築された UI コンポーネント・テーマ      |
 
 ## セットアップ
 
@@ -28,13 +28,31 @@ uv sync
 ## 開発用起動コマンド
 
 ```bash
-uv run fastapi dev --host 0.0.0.0
+uv run fastapi dev
+```
+
+## プロダクション用起動コマンド
+
+```bash
+uv run fastapi run
 ```
 
 ## Docker での起動
 
 ```bash
-docker compose up --build
+docker compose up -d --build
+```
+
+## pre-commit
+
+```bash
+uv run pre-commit install
+```
+
+## poethepoetタスクランナーの実行
+
+```bash
+uv run poe check
 ```
 
 ブラウザで <http://localhost:60000> を開いてください。Todo データは `todo-data` ボリュームに保存されます。

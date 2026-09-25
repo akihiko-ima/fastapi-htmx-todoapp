@@ -16,6 +16,7 @@
       crossorigin="anonymous"
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/htmx-ext-response-targets@2.0.1/response-targets.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx-ext-sse@2.2.4/dist/sse.js"></script>
     <script
       defer
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.2/dist/cdn.min.js"
@@ -34,7 +35,21 @@
       }
     </style>
   </head>
-  <body class="min-h-screen bg-base-200 text-base-content" data-theme="light">
+  <body
+    class="min-h-screen bg-base-200 text-base-content"
+    data-theme="light"
+    hx-ext="sse"
+    sse-connect="/todos/events?client_id={{ client_id }}"
+    hx-headers='{"X-Client-Id": "{{ client_id }}"}'
+  >
+    <!-- 他のユーザーによる変更の通知 -->
+    <div
+      class="toast toast-end z-50"
+      sse-swap="todo-changed"
+      hx-swap="afterbegin"
+      aria-live="polite"
+    ></div>
+
     <main
       class="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-10 sm:py-16"
       x-data="{ filter: 'all' }"
@@ -116,6 +131,15 @@
           完了
         </button>
       </nav>
+
+      <!-- 変更通知を受けたら一覧を取り直す -->
+      <div
+        hidden
+        hx-get="/todos"
+        hx-trigger="sse:todo-changed"
+        hx-target="#todo-list"
+        hx-swap="outerHTML"
+      ></div>
 
       {% include "_todo_list.html" %}
     </main>
