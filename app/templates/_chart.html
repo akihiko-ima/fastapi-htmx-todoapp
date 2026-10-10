@@ -1,0 +1,71 @@
+{# 最新の点が常に右端に来るよう、点数が足りないうちは右寄せで描く #}
+{% set width = 600 %}
+{% set height = 240 %}
+{% set left = 32 %}
+{% set right = 16 %}
+{% set top = 12 %}
+{% set bottom = 12 %}
+{% set plot_width = width - left - right %}
+{% set plot_height = height - top - bottom %}
+{% set step = plot_width / (max_points - 1) %}
+{% set offset = max_points - values | length %}
+{% macro x(i) %}{{ "%.1f" | format(left + (offset + i) * step) }}{% endmacro %}
+{# daisyUI の CDN 版には stroke-* / fill-* の色クラスがないため、text-* で色を付けて currentColor で参照する #}
+{% macro y(v) %}{{ "%.1f" | format(top + (max_value - v) * plot_height / (max_value - min_value)) }}{% endmacro %}
+<div class="flex items-baseline justify-between px-4 pt-4">
+  <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-base-content/60">
+    Random value
+  </h2>
+  <p class="text-sm text-base-content/60">
+    最新値
+    <span class="ml-1 text-3xl font-black tabular-nums text-base-content">
+      {{ values[-1] if values else "-" }}
+    </span>
+  </p>
+</div>
+<svg
+  viewBox="0 0 {{ width }} {{ height }}"
+  class="block h-auto w-full"
+  role="img"
+  aria-label="直近 {{ max_points }} 秒の値の推移{% if values %}。最新値は {{ values[-1] }}{% endif %}"
+>
+  {% for v in [1, 4, 7, 10] %}
+  <line
+    x1="{{ left }}"
+    x2="{{ width - right }}"
+    y1="{{ y(v) }}"
+    y2="{{ y(v) }}"
+    stroke="currentColor"
+    stroke-width="1"
+    class="text-base-content/10"
+  />
+  <text
+    x="{{ left - 8 }}"
+    y="{{ y(v) }}"
+    text-anchor="end"
+    dominant-baseline="middle"
+    fill="currentColor"
+    class="text-base-content/50 text-[11px] tabular-nums"
+  >{{ v }}</text>
+  {% endfor %}
+
+  {% if values %}
+  {% set points %}{% for v in values %}{{ x(loop.index0) }},{{ y(v) }} {% endfor %}{% endset %}
+  <polyline
+    points="{{ points }}"
+    fill="none"
+    stroke="currentColor"
+    class="text-primary"
+    stroke-width="2"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+  <circle
+    cx="{{ x(values | length - 1) }}"
+    cy="{{ y(values[-1]) }}"
+    r="4"
+    fill="currentColor"
+    class="text-primary"
+  />
+  {% endif %}
+</svg>

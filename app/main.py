@@ -1,6 +1,8 @@
 import asyncio
+import random
 import signal
 import threading
+from collections import deque
 from collections.abc import AsyncIterable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -22,6 +24,12 @@ engine = create_engine(database_url, connect_args={"check_same_thread": False})
 
 # 接続(タブ)あたり、未送信のまま溜めておける通知の上限
 MAX_PENDING_EVENTS_PER_CLIENT = 100
+
+# グラフに表示する点の数と、値を生成する間隔(秒)
+CHART_POINTS = 30
+CHART_INTERVAL_SECONDS = 1
+CHART_MIN_VALUE = 1
+CHART_MAX_VALUE = 10
 
 
 class Todo(SQLModel, table=True):
@@ -73,6 +81,52 @@ class TodoEventBroker:
 broker = TodoEventBroker()
 
 
+class ChartBroker:
+    """生成した値の履歴を保持し、接続中の全ブラウザ(タブ)に同じ内容を配信する。
+
+    プロセス内メモリで管理するため、ワーカーが 1 つの構成を前提とする。
+    """
+
+    def __init__(self) -> None:
+        self.values: deque[int] = deque(maxlen=CHART_POINTS)
+        self._subscribers: set[asyncio.Queue[list[int]]] = set()
+
+    def subscribe(self) -> asyncio.Queue[list[int]]:
+        queue: asyncio.Queue[list[int]] = asyncio.Queue(maxsize=1)
+        self._subscribers.add(queue)
+        return queue
+
+    def unsubscribe(self, queue: asyncio.Queue[list[int]]) -> None:
+        self._subscribers.discard(queue)
+
+    def publish(self, value: int) -> None:
+        self.values.append(value)
+        snapshot = list(self.values)
+        for queue in self._subscribers:
+            # 毎回履歴ごと送るため、受信が滞っていれば古いものを捨てて最新だけ残す
+            if queue.full():
+                queue.get_nowait()
+            queue.put_nowait(snapshot)
+
+    def close(self) -> None:
+        for queue in self._subscribers:
+            queue.shutdown(immediate=True)
+
+
+chart_broker = ChartBroker()
+
+
+async def generate_chart_values() -> None:
+    while True:
+        chart_broker.publish(random.randint(CHART_MIN_VALUE, CHART_MAX_VALUE))
+        await asyncio.sleep(CHART_INTERVAL_SECONDS)
+
+
+def close_brokers() -> None:
+    broker.close()
+    chart_broker.close()
+
+
 def close_broker_on_exit_signal() -> None:
     """終了シグナルで SSE ストリームを閉じる。
 
@@ -90,7 +144,7 @@ def close_broker_on_exit_signal() -> None:
         def handler(
             signum: int, frame: FrameType | None, previous: Any = previous
         ) -> None:
-            loop.call_soon_threadsafe(broker.close)
+            loop.call_soon_threadsafe(close_brokers)
             if callable(previous):
                 previous(signum, frame)
 
@@ -101,7 +155,9 @@ def close_broker_on_exit_signal() -> None:
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
     close_broker_on_exit_signal()
+    chart_task = asyncio.create_task(generate_chart_values())
     yield
+    chart_task.cancel()
 
 
 app = FastAPI(title="Todo API", lifespan=lifespan)
@@ -150,6 +206,38 @@ async def todo_events(client_id: str) -> AsyncIterable[ServerSentEvent]:
             )
     finally:
         broker.unsubscribe(queue)
+
+
+def render_chart(values: list[int]) -> str:
+    return templates.get_template("_chart.html").render(
+        values=values,
+        max_points=CHART_POINTS,
+        min_value=CHART_MIN_VALUE,
+        max_value=CHART_MAX_VALUE,
+    )
+
+
+@app.get("/chart", response_class=HTMLResponse)
+async def chart(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="chart.html",
+        context={"chart": render_chart(list(chart_broker.values))},
+    )
+
+
+@app.get("/chart/events", response_class=EventSourceResponse)
+async def chart_events() -> AsyncIterable[ServerSentEvent]:
+    queue = chart_broker.subscribe()
+    try:
+        while True:
+            try:
+                values = await queue.get()
+            except asyncio.QueueShutDown:
+                return  # サーバー停止時。ブラウザは再起動後に自動で再接続する
+            yield ServerSentEvent(event="chart-tick", raw_data=render_chart(values))
+    finally:
+        chart_broker.unsubscribe(queue)
 
 
 @app.post("/todos", response_class=HTMLResponse)
